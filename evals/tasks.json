@@ -1,0 +1,140 @@
+[
+  {
+    "id": "wrap_index",
+    "trap": "Python's % takes the sign of the divisor; JavaScript's takes the sign of the dividend.",
+    "python": {"entry": "wrap_index", "code": "def wrap_index(i, n):\n    return i % n\n"},
+    "javascript": {"entry": "wrapIndex", "code": "function wrapIndex(i, n) {\n  return ((i % n) + n) % n;\n}\n"},
+    "cases": [
+      {"args": [7, 5], "expected": 2},
+      {"args": [-1, 5], "expected": 4},
+      {"args": [-12, 5], "expected": 3},
+      {"args": [0, 3], "expected": 0}
+    ]
+  },
+  {
+    "id": "bucket",
+    "trap": "Python's // floors toward negative infinity; truncating division rounds toward zero.",
+    "python": {"entry": "bucket", "code": "def bucket(value, size):\n    return value // size\n"},
+    "javascript": {"entry": "bucket", "code": "function bucket(value, size) {\n  return Math.floor(value / size);\n}\n"},
+    "cases": [
+      {"args": [7, 2], "expected": 3},
+      {"args": [-7, 2], "expected": -4},
+      {"args": [-6, 3], "expected": -2},
+      {"args": [0, 4], "expected": 0}
+    ]
+  },
+  {
+    "id": "sort_numbers",
+    "trap": "JavaScript's default sort compares numbers as strings.",
+    "python": {"entry": "sort_numbers", "code": "def sort_numbers(nums):\n    return sorted(nums)\n"},
+    "javascript": {"entry": "sortNumbers", "code": "function sortNumbers(nums) {\n  return [...nums].sort((a, b) => a - b);\n}\n"},
+    "cases": [
+      {"args": [[10, 9, 1, 100]], "expected": [1, 9, 10, 100]},
+      {"args": [[-5, 3, -10]], "expected": [-10, -5, 3]},
+      {"args": [[]], "expected": []}
+    ]
+  },
+  {
+    "id": "round_half",
+    "trap": "Python's round() rounds halves to even (banker's rounding); Math.round rounds them up.",
+    "python": {"entry": "round_half", "code": "def round_half(x):\n    return round(x)\n"},
+    "javascript": {"entry": "roundHalf", "code": "function roundHalf(x) {\n  const floor = Math.floor(x);\n  const diff = x - floor;\n  if (diff < 0.5) return floor;\n  if (diff > 0.5) return floor + 1;\n  return floor % 2 === 0 ? floor : floor + 1;\n}\n"},
+    "cases": [
+      {"args": [2.5], "expected": 2},
+      {"args": [3.5], "expected": 4},
+      {"args": [-2.5], "expected": -2},
+      {"args": [0.5], "expected": 0},
+      {"args": [2.6], "expected": 3},
+      {"args": [2.4], "expected": 2}
+    ]
+  },
+  {
+    "id": "word_counts",
+    "trap": "str.split() with no argument drops empty strings; JavaScript's split(' ') keeps them.",
+    "python": {"entry": "word_counts", "code": "def word_counts(text):\n    counts = {}\n    for word in text.lower().split():\n        counts[word] = counts.get(word, 0) + 1\n    return counts\n"},
+    "javascript": {"entry": "wordCounts", "code": "function wordCounts(text) {\n  const counts = {};\n  for (const word of text.toLowerCase().split(/\\s+/).filter(Boolean)) {\n    counts[word] = (counts[word] || 0) + 1;\n  }\n  return counts;\n}\n"},
+    "cases": [
+      {"args": ["The the cat"], "expected": {"the": 2, "cat": 1}},
+      {"args": ["  a  b a "], "expected": {"a": 2, "b": 1}},
+      {"args": [""], "expected": {}}
+    ]
+  },
+  {
+    "id": "is_palindrome",
+    "trap": "Must ignore case and non-alphanumeric characters, including on empty input.",
+    "python": {"entry": "is_palindrome", "code": "def is_palindrome(s):\n    cleaned = [c.lower() for c in s if c.isalnum()]\n    return cleaned == cleaned[::-1]\n"},
+    "javascript": {"entry": "isPalindrome", "code": "function isPalindrome(s) {\n  const cleaned = s.toLowerCase().replace(/[^a-z0-9]/g, '');\n  return cleaned === [...cleaned].reverse().join('');\n}\n"},
+    "cases": [
+      {"args": ["A man, a plan, a canal: Panama"], "expected": true},
+      {"args": ["race a car"], "expected": false},
+      {"args": [""], "expected": true}
+    ]
+  },
+  {
+    "id": "top_k_frequent",
+    "trap": "Counting with a plain JavaScript object turns numeric keys into strings.",
+    "python": {"entry": "top_k_frequent", "code": "from collections import Counter\n\n\ndef top_k_frequent(nums, k):\n    ranked = sorted(Counter(nums).items(), key=lambda kv: (-kv[1], kv[0]))\n    return [num for num, _ in ranked[:k]]\n"},
+    "javascript": {"entry": "topKFrequent", "code": "function topKFrequent(nums, k) {\n  const counts = new Map();\n  for (const n of nums) counts.set(n, (counts.get(n) || 0) + 1);\n  return [...counts.entries()]\n    .sort((a, b) => b[1] - a[1] || a[0] - b[0])\n    .slice(0, k)\n    .map(([n]) => n);\n}\n"},
+    "cases": [
+      {"args": [[1, 1, 1, 2, 2, 3], 2], "expected": [1, 2]},
+      {"args": [[4, 4, 5, 5, 6], 2], "expected": [4, 5]},
+      {"args": [[], 3], "expected": []}
+    ]
+  },
+  {
+    "id": "merge_intervals",
+    "trap": "Sorting arrays of pairs without a comparator sorts them as strings in JavaScript.",
+    "python": {"entry": "merge_intervals", "code": "def merge_intervals(intervals):\n    merged = []\n    for start, end in sorted(intervals):\n        if merged and start <= merged[-1][1]:\n            merged[-1][1] = max(merged[-1][1], end)\n        else:\n            merged.append([start, end])\n    return merged\n"},
+    "javascript": {"entry": "mergeIntervals", "code": "function mergeIntervals(intervals) {\n  const sorted = intervals.map(([s, e]) => [s, e]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);\n  const merged = [];\n  for (const [start, end] of sorted) {\n    if (merged.length && start <= merged[merged.length - 1][1]) {\n      merged[merged.length - 1][1] = Math.max(merged[merged.length - 1][1], end);\n    } else {\n      merged.push([start, end]);\n    }\n  }\n  return merged;\n}\n"},
+    "cases": [
+      {"args": [[[1, 3], [2, 6], [8, 10], [15, 18]]], "expected": [[1, 6], [8, 10], [15, 18]]},
+      {"args": [[[1, 4], [4, 5]]], "expected": [[1, 5]]},
+      {"args": [[[10, 12], [9, 10]]], "expected": [[9, 12]]},
+      {"args": [[]], "expected": []}
+    ]
+  },
+  {
+    "id": "run_length_encode",
+    "trap": "Off-by-one at the end of the string; empty input.",
+    "python": {"entry": "run_length_encode", "code": "def run_length_encode(s):\n    out = []\n    i = 0\n    while i < len(s):\n        j = i\n        while j < len(s) and s[j] == s[i]:\n            j += 1\n        out.append(f\"{s[i]}{j - i}\")\n        i = j\n    return \"\".join(out)\n"},
+    "javascript": {"entry": "runLengthEncode", "code": "function runLengthEncode(s) {\n  let out = '';\n  let i = 0;\n  while (i < s.length) {\n    let j = i;\n    while (j < s.length && s[j] === s[i]) j++;\n    out += `${s[i]}${j - i}`;\n    i = j;\n  }\n  return out;\n}\n"},
+    "cases": [
+      {"args": ["aaabccdd"], "expected": "a3b1c2d2"},
+      {"args": ["z"], "expected": "z1"},
+      {"args": [""], "expected": ""}
+    ]
+  },
+  {
+    "id": "roman_to_int",
+    "trap": "Subtractive pairs (IV, CM) must be handled.",
+    "python": {"entry": "roman_to_int", "code": "def roman_to_int(s):\n    values = {'I': 1, 'V': 5, 'X': 10, 'L': 50, 'C': 100, 'D': 500, 'M': 1000}\n    total = 0\n    for i, ch in enumerate(s):\n        if i + 1 < len(s) and values[ch] < values[s[i + 1]]:\n            total -= values[ch]\n        else:\n            total += values[ch]\n    return total\n"},
+    "javascript": {"entry": "romanToInt", "code": "function romanToInt(s) {\n  const values = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };\n  let total = 0;\n  for (let i = 0; i < s.length; i++) {\n    if (i + 1 < s.length && values[s[i]] < values[s[i + 1]]) total -= values[s[i]];\n    else total += values[s[i]];\n  }\n  return total;\n}\n"},
+    "cases": [
+      {"args": ["III"], "expected": 3},
+      {"args": ["LVIII"], "expected": 58},
+      {"args": ["MCMXCIV"], "expected": 1994}
+    ]
+  },
+  {
+    "id": "title_case",
+    "trap": "str.title() capitalises after any non-letter (\"bill's\" becomes \"Bill'S\"); a word-split capitaliser does not.",
+    "python": {"entry": "title_case", "code": "def title_case(s):\n    return s.title()\n"},
+    "javascript": {"entry": "titleCase", "code": "function titleCase(s) {\n  let out = '';\n  let prevLetter = false;\n  for (const ch of s) {\n    const isLetter = ch.toLowerCase() !== ch.toUpperCase();\n    out += isLetter ? (prevLetter ? ch.toLowerCase() : ch.toUpperCase()) : ch;\n    prevLetter = isLetter;\n  }\n  return out;\n}\n"},
+    "cases": [
+      {"args": ["hello world"], "expected": "Hello World"},
+      {"args": ["they're bill's"], "expected": "They'Re Bill'S"},
+      {"args": ["3rd PLACE"], "expected": "3Rd Place"}
+    ]
+  },
+  {
+    "id": "binary_search",
+    "trap": "Midpoint must use integer (floor) division.",
+    "python": {"entry": "binary_search", "code": "def binary_search(nums, target):\n    lo, hi = 0, len(nums) - 1\n    while lo <= hi:\n        mid = (lo + hi) // 2\n        if nums[mid] == target:\n            return mid\n        if nums[mid] < target:\n            lo = mid + 1\n        else:\n            hi = mid - 1\n    return -1\n"},
+    "javascript": {"entry": "binarySearch", "code": "function binarySearch(nums, target) {\n  let lo = 0;\n  let hi = nums.length - 1;\n  while (lo <= hi) {\n    const mid = Math.floor((lo + hi) / 2);\n    if (nums[mid] === target) return mid;\n    if (nums[mid] < target) lo = mid + 1;\n    else hi = mid - 1;\n  }\n  return -1;\n}\n"},
+    "cases": [
+      {"args": [[1, 3, 5, 7, 9, 11], 7], "expected": 3},
+      {"args": [[1, 3, 5, 7, 9, 11], 4], "expected": -1},
+      {"args": [[], 1], "expected": -1}
+    ]
+  }
+]
