@@ -1,93 +1,105 @@
+"""CodeXchange: translate code between programming languages with Gemini.
+
+Run with: streamlit run app.py
+"""
+
+from __future__ import annotations
+
+import os
+
 import streamlit as st
-import google.generativeai as palm
 
-# Path to your service account key file
-palm.configure(api_key="your-api-key")
+from codexchange.languages import LANGUAGES
+from codexchange.translator import DEFAULT_MODEL, GeminiTranslator, TranslationError
 
+st.set_page_config(page_title="CodeXchange", page_icon="🔁", layout="wide")
 
-
-chat_model = "models/chat-bison-001"
-
-
-def translate_code(source_code, source_lang, target_lang):
-    context = f"You are a highly skilled software developer with expertise in multiple programming languages. Translate the following {source_lang} code to {target_lang}. Ensure that the functionality remains the same and that you follow best practices and idioms of the {target_lang} language.I want you to give only the code no need any other explainations.\n\n {source_code}"
-    response = palm.chat(model=chat_model,messages=[context])
-    return str(response.candidates[0]["content"][3:len(response.candidates[0]["content"])-4])
-
-st.set_page_config(layout="wide")  # Set the layout to wide
+state = st.session_state
+state.setdefault("source_lang", "Python")
+state.setdefault("target_lang", "JavaScript")
+state.setdefault("source_code", "")
+state.setdefault("result", None)  # (Translation, target language name)
+state.setdefault("error", None)
 
 
-
-st.title("CodeXchange: Revolutionizing Code Translation and Collaboration")
-
-st.markdown("""
-**CodeXchange** is an innovative web application designed to streamline code translation and facilitate seamless collaboration among developers working with different programming languages. Whether you're transitioning applications between platforms, collaborating in multilingual teams, or reusing code across projects, CodeXchange empowers developers to effortlessly translate code snippets between various programming languages. Leveraging advanced translation algorithms and syntax analysis, CodeXchange ensures accurate and reliable code conversion while preserving the original functionality and logic. With its intuitive interface and comprehensive language support, CodeXchange revolutionizes the development workflow, enabling teams to work together efficiently, enhance code reusability, and accelerate project delivery.
-""")
-
-st.markdown("## Scenario 1: Platform Transition")
-
-st.markdown("""
-CodeXchange assists developers in transitioning applications from one platform to another. For instance, a team working on an application written in Python needs to migrate it to Java to leverage Java's robustness and scalability in an enterprise environment. By inputting the Python code snippets and selecting Java as the target language, developers receive accurately translated code that maintains the original functionality, streamlining the migration process and minimizing the risk of introducing errors.
-""")
-
-st.markdown("## Scenario 2: Multilingual Collaboration")
-
-st.markdown("""
-In a collaborative project where team members use different programming languages, CodeXchange facilitates seamless integration by translating code snippets as needed. Suppose one part of the team is proficient in C++ while another prefers Python. Developers can write code in their preferred language and use CodeXchange to translate it, ensuring all team members can work together efficiently without being constrained by language barriers. This enhances productivity and reduces the learning curve associated with adopting new languages.
-""")
-
-st.markdown("## Scenario 3: Code Reusability Across Projects")
-
-st.markdown("""
-CodeXchange promotes code reusability by enabling developers to translate existing code into different languages for new projects. For example, a developer has written a set of utility functions in Java that would be beneficial for a new project being developed in C++. By translating these Java functions into C++ using CodeXchange, the developer can quickly integrate proven code into the new project, saving time and ensuring consistency across different projects.
-""")
+def _secret(name: str) -> str | None:
+    try:
+        return st.secrets.get(name)
+    except Exception:  # no secrets.toml configured
+        return None
 
 
-col1, col2 = st.columns([0.5,0.5], gap="large")
+with st.sidebar:
+    st.header("Settings")
+    key_input = st.text_input("Gemini API key", type="password",
+                              help="Kept only for this browser session. "
+                                   "Alternatively set GEMINI_API_KEY.")
+    model = st.text_input("Model", value=os.environ.get("GEMINI_MODEL", DEFAULT_MODEL))
+    st.caption("[Get a Gemini API key](https://ai.google.dev/gemini-api/docs/api-key)")
 
-with col1:
-    source_lang = st.selectbox("Select Source Language", ["Java", "Python", "JavaScript", "C++", "Ruby", "PHP", "Go", "Swift", "Kotlin", "TypeScript"])
-    source_code = st.text_area("Source Code", height=600)  # Increase the height
-    a=st.button("Translate")
-
-with col2:
-    target_lang = st.selectbox("Select Target Language", ["Python", "Java", "JavaScript", "C++", "Ruby", "PHP", "Go", "Swift", "Kotlin", "TypeScript"])
-    if a:
-        if source_code:
-            translated_code = translate_code(source_code, source_lang, target_lang)
-        else:
-            st.warning("Please enter the source code to translate.")
-    if 'translated_code' in locals():
-        st.success("CODE TRANSALATION DONE")
-        st.code(translated_code,language=target_lang.lower(),line_numbers=True)
+api_key = key_input or _secret("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
 
 
-st.markdown("""
-<style>
-    .main {
-        padding: 1rem;
-        font-size:42px;
-    }
-    .block-container {
-        padding: 2rem 1rem 10rem;
-        background-color: #ffffff;
-        border-radius: 10px;
-        box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
-    }
-    .stButton > button {
-        background-color: green;
-        color: white;
-        border: white;
-        border-radius: 5px;
-        padding: 1rem 2rem;
-        font-size: 5px;
-        cursor: pointer;
-    }
-    .stTextInput > div > input, .stTextArea > div > textarea, .stSelectbox > div > select {
-        border-radius: 5px;
-        border: 1px solid #ccc;
-        padding: 1rem;
-        font-size: 10px;
-    }
-</style>
-""", unsafe_allow_html=True)
+def translate() -> None:
+    # Runs as a button callback, i.e. before the page re-renders, so the result appears on
+    # the same click instead of the next one.
+    state.error = None
+    try:
+        translator = GeminiTranslator(api_key=api_key, model=model or None)
+        state.result = (translator.translate(state.source_code, state.source_lang,
+                                             state.target_lang), state.target_lang)
+    except (ValueError, TranslationError) as exc:
+        state.result = None
+        state.error = str(exc)
+
+
+def swap() -> None:
+    state.source_lang, state.target_lang = state.target_lang, state.source_lang
+    if state.result is not None:
+        # Swapping after a translation continues from it, so a round trip is two clicks.
+        state.source_code = state.result[0].code
+        state.result = None
+
+
+st.title("CodeXchange")
+st.caption("Translate code between 12 languages with Gemini. Translation quality is measured "
+           "by running the translated code; see the README.")
+
+names = list(LANGUAGES)
+left, middle, right = st.columns([12, 1, 12], vertical_alignment="top")
+
+with left:
+    st.selectbox("From", names, key="source_lang")
+    st.text_area("Source code", key="source_code", height=420,
+                 placeholder="Paste the code to translate…")
+
+with middle:
+    st.write("")
+    st.write("")
+    st.button("⇄", key="swap", on_click=swap, help="Swap languages")
+
+with right:
+    st.selectbox("To", names, key="target_lang")
+    if state.result is not None:
+        translation, target = state.result
+        st.code(translation.code, language=LANGUAGES[target].fence, line_numbers=True)
+        st.download_button("Download", data=translation.code,
+                           file_name=f"translated.{LANGUAGES[target].extension}")
+        st.caption(f"Translated by `{translation.model}`")
+    else:
+        st.info("The translation will appear here.")
+
+st.button("Translate", key="translate", type="primary", on_click=translate)
+if state.error:
+    st.error(state.error)
+
+with st.expander("How it works"):
+    st.markdown(
+        "- Your code and the two languages go to Gemini with a system prompt that asks for an "
+        "exact behavioural translation, calling out the classic traps: negative modulo and "
+        "floor division, rounding, sort order, string handling.\n"
+        "- The reply's code block is extracted and shown with syntax highlighting.\n"
+        "- `evals/` checks translations by **executing** them against test cases in the "
+        "target language, because translated code that reads correctly can still behave "
+        "differently."
+    )
